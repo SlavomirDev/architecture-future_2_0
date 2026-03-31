@@ -1,0 +1,77 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(analyst, "Бизнес-пользователь", "Аналитика и отчеты")
+Person(fin_user, "Финансовый сотрудник", "Финансовые операции")
+Person(ai_user, "ML инженер", "Разработка моделей")
+Person(med_user, "Врач", "Работа с пациентами")
+
+System_Ext(partners, "Партнёры (фарма, устройства)", "Внешние системы")
+
+Container_Boundary(cloud, "Cloud Platform") {
+
+    Container(api_gateway, "API Gateway", "Kong / Nginx", "Единая точка входа")
+    Container(event_bus, "Event Streaming Platform", "Kafka", "Событийная шина")
+
+    Container_Boundary(data_platform, "Data Platform (Lakehouse)") {
+        Container(stream_ingest, "Streaming Ingestion", "Kafka Connect", "Онлайн загрузка")
+        Container(batch_ingest, "Batch Ingestion", "Airflow", "Пакетная загрузка")
+        Container(raw_zone, "Raw Zone", "S3", "Сырые данные")
+        Container(core_dwh, "Domain DWH", "ClickHouse / BigQuery", "Доменные витрины")
+        Container(semantic_layer, "Semantic Layer", "dbt", "Бизнес-логика")
+        Container(data_api, "Data API", "Python", "Доступ к данным")
+        Container(bi_portal, "Self-Service BI", "Power BI / DataLens", "Отчеты")
+    }
+}
+
+Container_Boundary(med_domain, "Healthcare") {
+    Container(mis, "Medical System", "Microservices", "Система клиник")
+    Container(med_db, "Medical DB", "PostgreSQL", "Данные пациентов")
+}
+
+Container_Boundary(fin_domain, "Финтех") {
+    Container(core_bank, "Core Banking", "Microservices", "Финансовые операции")
+    Container(fin_db, "Fin DB", "PostgreSQL", "Транзакции")
+}
+
+Container_Boundary(ai_domain, "AI") {
+    Container(ml_services, "ML Services", "Python", "Модели")
+    Container(feature_store, "Feature Store", "Redis / Feast", "Фичи")
+}
+
+Rel(analyst, bi_portal, "Работает с отчетами")
+
+Rel(fin_user, api_gateway, "Работает через UI/API")
+Rel(api_gateway, core_bank, "Маршрутизация запросов")
+
+Rel(med_user, api_gateway, "Работает через UI/API")
+Rel(api_gateway, mis, "Маршрутизация запросов")
+
+Rel(ai_user, ml_services, "Разрабатывает модели")
+Rel(ai_user, feature_store, "Работает с фичами")
+Rel(ai_user, data_api, "Получает данные")
+
+Rel(partners, api_gateway, "API интеграция")
+Rel(api_gateway, event_bus, "Публикация событий")
+
+Rel(mis, event_bus, "События медицины")
+Rel(core_bank, event_bus, "События финтех")
+Rel(ml_services, event_bus, "Результаты моделей")
+
+Rel(event_bus, stream_ingest, "Streaming ingestion")
+Rel(stream_ingest, raw_zone, "Landing")
+Rel(batch_ingest, raw_zone, "Batch загрузка")
+
+Rel(raw_zone, core_dwh, "Обработка")
+Rel(core_dwh, semantic_layer, "Моделирование")
+
+Rel(semantic_layer, bi_portal, "Метрики")
+
+Rel(mis, med_db, "CRUD")
+Rel(core_bank, fin_db, "CRUD")
+Rel(ml_services, feature_store, "Чтение/запись")
+
+Rel(core_dwh, data_api, "Источник данных")
+Rel(data_api, ml_services, "Данные для ML")
+
+@enduml

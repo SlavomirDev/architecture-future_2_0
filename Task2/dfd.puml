@@ -1,0 +1,68 @@
+@startuml
+
+actor "Бизнес-пользователь" as analyst
+actor "Врач" as doctor
+actor "Финансовый сотрудник" as fin_user
+actor "ML инженер" as ml_user
+actor "Партнёры (фарма, устройства)" as partners
+
+rectangle "Healthcare" {
+    component "Medical System" as mis
+    database "Medical DB" as med_db
+}
+
+rectangle "Финтех" {
+    component "Core Banking" as core_bank
+    database "Fin DB" as fin_db
+}
+
+rectangle "AI" {
+    component "ML Services" as ml_services
+    database "Feature Store" as feature_store
+}
+
+rectangle "Data Platform" {
+    component "Streaming Ingestion" as ingest
+    component "Data Lake (Raw)" as raw
+    component "DWH (Curated)" as dwh
+    component "Semantic Layer" as semantic
+    component "Data API" as data_api
+    component "BI Portal" as bi
+}
+
+rectangle "Integration Domain" {
+    component "Event Bus (Kafka)" as kafka
+    component "API Gateway" as api
+}
+
+doctor --> mis : Работа с пациентами
+fin_user --> core_bank : Финансовые операции
+analyst --> bi : Отчёты и аналитика
+ml_user --> ml_services : Разработка моделей
+partners --> api : Интеграция через API
+
+
+mis --> med_db : CRUD
+core_bank --> fin_db : CRUD
+ml_services --> feature_store : Чтение/запись
+
+
+mis --> kafka : События медицины
+core_bank --> kafka : Финансовые события
+ml_services --> kafka : Результаты моделей
+
+api --> kafka : Публикация событий от партнёров
+
+
+kafka --> ingest : Поток данных
+ingest --> raw : Сырые данные
+raw --> dwh : Обработка и агрегация
+dwh --> semantic : Подготовка витрин
+semantic --> bi : Бизнес-метрики
+
+
+dwh --> data_api : Доступ к данным
+data_api --> ml_services : Данные для моделей
+data_api --> api : Внешний доступ
+
+@enduml
