@@ -1,77 +1,99 @@
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-Person(analyst, "Бизнес-пользователь", "Аналитика и отчеты")
-Person(fin_user, "Финансовый сотрудник", "Финансовые операции")
-Person(ai_user, "ML инженер", "Разработка моделей")
-Person(med_user, "Врач", "Работа с пациентами")
+title Целевая архитектура "Будущее 2.0" (Container View) - Финальное состояние через год
 
-System_Ext(partners, "Партнёры (фарма, устройства)", "Внешние системы")
+' Persons
+Person(analyst, "Аналитик/Бизнес-пользователь", "Сотрудник группы с ролевой моделью")
+Person(accountant, "Бухгалтер группы компаний", "Ведение бухгалтерского учета")
+Person(ai_admin, "Администратор ИИ-сервисов", "Настройка ИИ-сервисов")
+Person(clinic_staff, "Сотрудники клиник", "Оказание медицинских сервисов")
+Person(fintech_staff, "Сотрудники Финтех компании", "Оказание финтех сервисов")
 
-Container_Boundary(cloud, "Cloud Platform") {
+' Boundaries
+Container_Boundary(head_company, "Головная компания") {
+    Container(support_systems, "Сопровождающие системы Группы", "NodeJS, Java", "Системы головной компании")
+    Container(fin_reporting, "Системы финансовой отчетности", "1С-Бухгалтерия", "Ведение бухгалтерского учета группы")
+    Container(fin_db, "БД бухгалтерского учета", "PostgreSQL", "Проводки и платежи группы")
+    Container(data_bus, "Шина данных (Legacy ESB)", "Apache Camel", "Постепенное вытеснение логики")
+    Container(central_kafka, "Центральная платформа сообщений", "Apache Kafka", "Агрегация данных из доменов")
 
-    Container(api_gateway, "API Gateway", "Kong / Nginx", "Единая точка входа")
-    Container(event_bus, "Event Streaming Platform", "Kafka", "Событийная шина")
-
-    Container_Boundary(data_platform, "Data Platform (Lakehouse)") {
-        Container(stream_ingest, "Streaming Ingestion", "Kafka Connect", "Онлайн загрузка")
-        Container(batch_ingest, "Batch Ingestion", "Airflow", "Пакетная загрузка")
-        Container(raw_zone, "Raw Zone", "S3", "Сырые данные")
-        Container(core_dwh, "Domain DWH", "ClickHouse / BigQuery", "Доменные витрины")
-        Container(semantic_layer, "Semantic Layer", "dbt", "Бизнес-логика")
-        Container(data_api, "Data API", "Python", "Доступ к данным")
-        Container(bi_portal, "Self-Service BI", "Power BI / DataLens", "Отчеты")
+    Container_Boundary(datalakehouse, "Аналитический контур (Data Lakehouse)") {
+        Container(load_services, "Сервисы загрузки", "Apache NiFi, Kafka Connect", "Потоковая и пакетная загрузка")
+        Container(structured_data, "Структурированные данные", "PostgreSQL / ClickHouse", "Обработанные данные")
+        Container(unstructured_data, "Неструктурированные данные", "S3", "Сырые данные и файлы")
+        Container(metadata_service, "Сервис метаданных", "Apache Iceberg", "Управление схемами и версиями")
+        Container(api_layer, "API слой", "Java, Python Flask", "Единый API для BI и AI")
+        Container(bi_system, "BI-система (Портал самообслуживания)", "Yandex DataLens / Power BI", "Визуализация и отчёты")
     }
 }
 
-Container_Boundary(med_domain, "Healthcare") {
-    Container(mis, "Medical System", "Microservices", "Система клиник")
-    Container(med_db, "Medical DB", "PostgreSQL", "Данные пациентов")
+Container_Boundary(ai_company, "МЕД ИИ Компания") {
+    Container(ai_services, "ИИ-сервисы", "Python, C#", "Диагностика, обработка изображений, рекомендации")
+    Container(ai_cabinet, "Личный кабинет ИИ", "NodeJS, Java", "Управление ИИ-сервисами")
+    Container(ai_db, "AI Result DB", "PostgreSQL", "Результаты работы ИИ")
+    Container(ai_kafka, "Kafka ИИ-сервисов", "Apache Kafka", "Обмен с головной компанией")
 }
 
-Container_Boundary(fin_domain, "Финтех") {
-    Container(core_bank, "Core Banking", "Microservices", "Финансовые операции")
-    Container(fin_db, "Fin DB", "PostgreSQL", "Транзакции")
+Container_Boundary(clinics, "Клиники") {
+    Container(mis, "МИС (Медицинская ИС)", "NodeJS, Java", "Работа с пациентами")
+    Container(health_db, "Healthcare DB", "PostgreSQL", "Клиенты, медкарты, истории")
+    Container(health_s3, "Healthcare S3", "S3", "Результаты исследований (DICOM, PDF)")
+    Container(med_kafka, "Kafka Медицины", "Apache Kafka", "Обмен с головной компанией")
 }
 
-Container_Boundary(ai_domain, "AI") {
-    Container(ml_services, "ML Services", "Python", "Модели")
-    Container(feature_store, "Feature Store", "Redis / Feast", "Фичи")
+Container_Boundary(fintech, "Финтех компания") {
+    Container(cbs, "Core Banking System", "NodeJS, Java", "Банковская система")
+    Container(fintech_db, "FinTech DB", "PostgreSQL", "Проводки и платежи")
+    Container(fintech_services, "Финтех-сервисы", "Java, Golang", "Кредитные продукты, платежные сервисы")
+    Container(fintech_kafka, "Kafka Финтех", "Apache Kafka", "Обмен с головной компанией")
 }
 
-Rel(analyst, bi_portal, "Работает с отчетами")
+' Relationships — Пользователи
+Rel(analyst, bi_system, "Использует портал самообслуживания")
+Rel(accountant, fin_reporting, "Работает с отчётностью")
+Rel(ai_admin, ai_cabinet, "Настраивает ИИ")
+Rel(clinic_staff, mis, "Использует МИС")
+Rel(fintech_staff, fintech_services, "Использует сервисы")
 
-Rel(fin_user, api_gateway, "Работает через UI/API")
-Rel(api_gateway, core_bank, "Маршрутизация запросов")
+' Relationships — Клиники
+Rel(mis, health_db, "CRUD мед. информации")
+Rel(mis, health_s3, "Загрузка/выгрузка файлов")
+Rel(health_db, med_kafka, "CDC → публикация событий (Debezium)")
 
-Rel(med_user, api_gateway, "Работает через UI/API")
-Rel(api_gateway, mis, "Маршрутизация запросов")
+' Relationships — Финтех
+Rel(cbs, fintech_db, "CRUD операций")
+Rel(cbs, fintech_services, "Синхронные вызовы")
+Rel(fintech_services, fintech_db, "CRUD")
+Rel(fintech_db, fintech_kafka, "CDC → публикация событий")
 
-Rel(ai_user, ml_services, "Разрабатывает модели")
-Rel(ai_user, feature_store, "Работает с фичами")
-Rel(ai_user, data_api, "Получает данные")
+' Relationships — ИИ
+Rel(ai_cabinet, ai_services, "Настройка параметров")
+Rel(ai_services, ai_db, "Сохранение результатов")
+Rel(ai_db, ai_kafka, "CDC → публикация результатов")
 
-Rel(partners, api_gateway, "API интеграция")
-Rel(api_gateway, event_bus, "Публикация событий")
+' Relationships — Головная компания
+Rel(fin_reporting, fin_db, "Работа с данными")
+Rel(fin_db, data_bus, "Выгрузка в ESB (Legacy)")
+Rel(support_systems, data_bus, "Интеграция через ESB")
 
-Rel(mis, event_bus, "События медицины")
-Rel(core_bank, event_bus, "События финтех")
-Rel(ml_services, event_bus, "Результаты моделей")
+' Междоменная интеграция через Kafka
+Rel(fintech_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(med_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(ai_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(central_kafka, data_bus, "Выгрузка в ESB (постепенно отключается)")
 
-Rel(event_bus, stream_ingest, "Streaming ingestion")
-Rel(stream_ingest, raw_zone, "Landing")
-Rel(batch_ingest, raw_zone, "Batch загрузка")
+' Data Lakehouse
+Rel(central_kafka, load_services, "Streaming ingestion (Kafka Connect)")
+Rel(load_services, structured_data, "ETL → структурированные данные")
+Rel(load_services, unstructured_data, "Сырые данные")
+Rel(structured_data, metadata_service, "Обновление метаданных")
+Rel(unstructured_data, metadata_service, "Обновление метаданных")
+Rel(structured_data, api_layer, "Доступ к данным")
+Rel(unstructured_data, api_layer, "Доступ к файлам")
+Rel(metadata_service, api_layer, "Lineage и схемы")
+Rel(api_layer, bi_system, "Данные для визуализации")
+Rel(api_layer, ai_services, "API для обучения")
 
-Rel(raw_zone, core_dwh, "Обработка")
-Rel(core_dwh, semantic_layer, "Моделирование")
-
-Rel(semantic_layer, bi_portal, "Метрики")
-
-Rel(mis, med_db, "CRUD")
-Rel(core_bank, fin_db, "CRUD")
-Rel(ml_services, feature_store, "Чтение/запись")
-
-Rel(core_dwh, data_api, "Источник данных")
-Rel(data_api, ml_services, "Данные для ML")
-
+SHOW_LEGEND()
 @enduml
