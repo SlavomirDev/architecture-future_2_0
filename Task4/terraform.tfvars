@@ -1,0 +1,9 @@
+yc_token   = ""
+cloud_id   = ""
+folder_id  = ""
+zone       = ""
+node_count = 3
+cores_per_node = 2
+memory_per_node = 4
+disk_size_gb = 20
+public_ssh_key_path = "~/.ssh/id_rsa.pub"

@@ -1,0 +1,99 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Целевая архитектура "Будущее 2.0" (Container View) - Финальное состояние через год
+
+' Persons
+Person(analyst, "Аналитик/Бизнес-пользователь", "Сотрудник группы с ролевой моделью")
+Person(accountant, "Бухгалтер группы компаний", "Ведение бухгалтерского учета")
+Person(ai_admin, "Администратор ИИ-сервисов", "Настройка ИИ-сервисов")
+Person(clinic_staff, "Сотрудники клиник", "Оказание медицинских сервисов")
+Person(fintech_staff, "Сотрудники Финтех компании", "Оказание финтех сервисов")
+
+' Boundaries
+Container_Boundary(head_company, "Головная компания") {
+    Container(support_systems, "Сопровождающие системы Группы", "NodeJS, Java", "Системы головной компании")
+    Container(fin_reporting, "Системы финансовой отчетности", "1С-Бухгалтерия", "Ведение бухгалтерского учета группы")
+    Container(fin_db, "БД бухгалтерского учета", "PostgreSQL", "Проводки и платежи группы")
+    Container(data_bus, "Шина данных (Legacy ESB)", "Apache Camel", "Постепенное вытеснение логики")
+    Container(central_kafka, "Центральная платформа сообщений", "Apache Kafka", "Агрегация данных из доменов")
+
+    Container_Boundary(datalakehouse, "Аналитический контур (Data Lakehouse)") {
+        Container(load_services, "Сервисы загрузки", "Apache NiFi, Kafka Connect", "Потоковая и пакетная загрузка")
+        Container(structured_data, "Структурированные данные", "PostgreSQL / ClickHouse", "Обработанные данные")
+        Container(unstructured_data, "Неструктурированные данные", "S3", "Сырые данные и файлы")
+        Container(metadata_service, "Сервис метаданных", "Apache Iceberg", "Управление схемами и версиями")
+        Container(api_layer, "API слой", "Java, Python Flask", "Единый API для BI и AI")
+        Container(bi_system, "BI-система (Портал самообслуживания)", "Yandex DataLens / Power BI", "Визуализация и отчёты")
+    }
+}
+
+Container_Boundary(ai_company, "МЕД ИИ Компания") {
+    Container(ai_services, "ИИ-сервисы", "Python, C#", "Диагностика, обработка изображений, рекомендации")
+    Container(ai_cabinet, "Личный кабинет ИИ", "NodeJS, Java", "Управление ИИ-сервисами")
+    Container(ai_db, "AI Result DB", "PostgreSQL", "Результаты работы ИИ")
+    Container(ai_kafka, "Kafka ИИ-сервисов", "Apache Kafka", "Обмен с головной компанией")
+}
+
+Container_Boundary(clinics, "Клиники") {
+    Container(mis, "МИС (Медицинская ИС)", "NodeJS, Java", "Работа с пациентами")
+    Container(health_db, "Healthcare DB", "PostgreSQL", "Клиенты, медкарты, истории")
+    Container(health_s3, "Healthcare S3", "S3", "Результаты исследований (DICOM, PDF)")
+    Container(med_kafka, "Kafka Медицины", "Apache Kafka", "Обмен с головной компанией")
+}
+
+Container_Boundary(fintech, "Финтех компания") {
+    Container(cbs, "Core Banking System", "NodeJS, Java", "Банковская система")
+    Container(fintech_db, "FinTech DB", "PostgreSQL", "Проводки и платежи")
+    Container(fintech_services, "Финтех-сервисы", "Java, Golang", "Кредитные продукты, платежные сервисы")
+    Container(fintech_kafka, "Kafka Финтех", "Apache Kafka", "Обмен с головной компанией")
+}
+
+' Relationships — Пользователи
+Rel(analyst, bi_system, "Использует портал самообслуживания")
+Rel(accountant, fin_reporting, "Работает с отчётностью")
+Rel(ai_admin, ai_cabinet, "Настраивает ИИ")
+Rel(clinic_staff, mis, "Использует МИС")
+Rel(fintech_staff, fintech_services, "Использует сервисы")
+
+' Relationships — Клиники
+Rel(mis, health_db, "CRUD мед. информации")
+Rel(mis, health_s3, "Загрузка/выгрузка файлов")
+Rel(health_db, med_kafka, "CDC → публикация событий (Debezium)")
+
+' Relationships — Финтех
+Rel(cbs, fintech_db, "CRUD операций")
+Rel(cbs, fintech_services, "Синхронные вызовы")
+Rel(fintech_services, fintech_db, "CRUD")
+Rel(fintech_db, fintech_kafka, "CDC → публикация событий")
+
+' Relationships — ИИ
+Rel(ai_cabinet, ai_services, "Настройка параметров")
+Rel(ai_services, ai_db, "Сохранение результатов")
+Rel(ai_db, ai_kafka, "CDC → публикация результатов")
+
+' Relationships — Головная компания
+Rel(fin_reporting, fin_db, "Работа с данными")
+Rel(fin_db, data_bus, "Выгрузка в ESB (Legacy)")
+Rel(support_systems, data_bus, "Интеграция через ESB")
+
+' Междоменная интеграция через Kafka
+Rel(fintech_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(med_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(ai_kafka, central_kafka, "MirrorMaker / репликация")
+Rel(central_kafka, data_bus, "Выгрузка в ESB (постепенно отключается)")
+
+' Data Lakehouse
+Rel(central_kafka, load_services, "Streaming ingestion (Kafka Connect)")
+Rel(load_services, structured_data, "ETL → структурированные данные")
+Rel(load_services, unstructured_data, "Сырые данные")
+Rel(structured_data, metadata_service, "Обновление метаданных")
+Rel(unstructured_data, metadata_service, "Обновление метаданных")
+Rel(structured_data, api_layer, "Доступ к данным")
+Rel(unstructured_data, api_layer, "Доступ к файлам")
+Rel(metadata_service, api_layer, "Lineage и схемы")
+Rel(api_layer, bi_system, "Данные для визуализации")
+Rel(api_layer, ai_services, "API для обучения")
+
+SHOW_LEGEND()
+@enduml
